@@ -320,10 +320,9 @@ describe("withOAuthAccess", () => {
 		expect(storage.calls).toEqual([{ forceRefresh: undefined }, { forceRefresh: true }]);
 	});
 
-	it("skips an unchanged force-refresh token and rotates to a sibling", async () => {
+	it("rotates to a sibling without refreshing an OAuth usage-limited credential", async () => {
 		const storage = fakeStorage({
 			initial: access("dead"),
-			forced: access("dead"),
 			rotated: access("sibling"),
 		});
 		const attempts: string[] = [];
@@ -333,14 +332,10 @@ describe("withOAuthAccess", () => {
 			return "ok";
 		});
 		expect(result).toBe("ok");
-		// "dead" must not be re-attempted after the no-op force refresh.
+		// A usage limit parks this account; retrying it with a refreshed bearer
+		// would burn a retry and delay selection of a viable sibling.
 		expect(attempts).toEqual(["dead", "sibling"]);
-		expect(storage.calls).toEqual([
-			{ forceRefresh: undefined },
-			{ forceRefresh: true },
-			"rotate",
-			{ forceRefresh: undefined },
-		]);
+		expect(storage.calls).toEqual([{ forceRefresh: undefined }, "rotate", { forceRefresh: undefined }]);
 	});
 
 	it("walks later OAuth siblings after consecutive usage limits", async () => {
